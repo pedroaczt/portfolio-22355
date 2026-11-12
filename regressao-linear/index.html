@@ -32,5 +32,170 @@ ol{margin:0;padding-left:20px;color:var(--muted)}
 </head>
 <body>
 <main>
-<h1>Regressão linear interativa
+<h1>Regressão linear interativa</h1>
+<p class="lead">Toque no gráfico para criar pontos. Depois clique em “Treinar” e veja a reta aprender a se encaixar nos dados usando gradiente descendente.</p>
 
+<div class="panel">
+  <canvas id="plot" aria-label="Gráfico de pontos e reta de regressão"></canvas>
+  <div class="key">
+    <span><i style="background:var(--line)"></i>reta aprendida</span>
+    <span><i style="background:var(--exact);opacity:.8"></i>solução exata</span>
+    <span><i style="background:var(--res)"></i>erro de cada ponto</span>
+  </div>
+  <div class="stats">
+    <span>Reta: <b id="eq">y = 0,00x + 0,50</b></span>
+    <span>Erro (MSE): <b id="mse">–</b></span>
+    <span>Passos: <b id="ep">0</b></span>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="row">
+    <button class="main" id="train">Treinar</button>
+    <button id="rand">Pontos aleatórios</button>
+    <button id="clear">Limpar</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label style="flex:1">Taxa de aprendizado <input type="range" id="lr" min="0.01" max="0.9" step="0.01" value="0.2"> <b id="lrv" style="color:var(--ink)">0,20</b></label>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <label><input type="checkbox" id="showExact" checked> Mostrar solução exata (mínimos quadrados)</label>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Erro ao longo do treino</h2>
+  <canvas id="loss" aria-label="Gráfico do erro por passo"></canvas>
+</div>
+
+<div class="panel">
+  <h2>Como funciona</h2>
+  <ol>
+    <li>A reta é y = w·x + b. Começa com w = 0.</li>
+    <li>Para cada ponto, mede-se o erro: a distância vertical até a reta.</li>
+    <li>O MSE é a média dos erros ao quadrado.</li>
+    <li>O gradiente indica para onde mudar w e b para o erro cair. Cada passo é multiplicado pela taxa de aprendizado.</li>
+    <li>Repetindo, a reta converge para a solução exata.</li>
+  </ol>
+</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const plot = $('plot'), lossC = $('loss');
+const px = plot.getContext('2d'), lx = lossC.getContext('2d');
+let pts = [], w = 0, b = 0.5, losses = [], epoch = 0, running = false;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (v, d = 2) => v.toFixed(d).replace('.', ',');
+
+function fit(c) {
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  c.width = Math.round(r.width * d); c.height = Math.round(r.height * d);
+  c.getContext('2d').setTransform(d, 0, 0, d, 0, 0);
+  return { W: r.width, H: r.height };
+}
+
+function mse() {
+  if (!pts.length) return 0;
+  return pts.reduce((s, p) => s + (w * p.x + b - p.y) ** 2, 0) / pts.length;
+}
+
+function exact() {
+  const n = pts.length; if (n < 2) return null;
+  const mx = pts.reduce((s, p) => s + p.x, 0) / n, my = pts.reduce((s, p) => s + p.y, 0) / n;
+  let cov = 0, vr = 0;
+  pts.forEach(p => { cov += (p.x - mx) * (p.y - my); vr += (p.x - mx) ** 2; });
+  if (vr < 1e-9) return null;
+  const k = cov / vr; return { w: k, b: my - k * mx };
+}
+
+function step() {
+  const n = pts.length; let dw = 0, db = 0;
+  pts.forEach(p => { const e = w * p.x + b - p.y; dw += e * p.x; db += e; });
+  const lr = +$('lr').value;
+  w -= lr * 2 * dw / n; b -= lr * 2 * db / n; epoch++;
+  losses.push(mse());
+}
+
+function draw() {
+  const { W, H } = fit(plot);
+  const X = x => x * W, Y = y => (1 - y) * H;
+  px.clearRect(0, 0, W, H);
+  px.strokeStyle = css('--grid'); px.lineWidth = 1;
+  for (let i = 1; i < 10; i++) {
+    px.beginPath(); px.moveTo(i * W / 10, 0); px.lineTo(i * W / 10, H);
+    px.moveTo(0, i * H / 10); px.lineTo(W, i * H / 10); px.stroke();
+  }
+  if (!pts.length) {
+    px.fillStyle = css('--muted'); px.font = '15px system-ui'; px.textAlign = 'center';
+    px.fillText('Toque aqui para adicionar pontos', W / 2, H / 2);
+  }
+  const line = (k, c, dash, lw) => {
+    px.strokeStyle = c; px.lineWidth = lw; px.setLineDash(dash);
+    px.beginPath(); px.moveTo(X(0), Y(k.b)); px.lineTo(X(1), Y(k.w + k.b)); px.stroke(); px.setLineDash([]);
+  };
+  const ex = exact();
+  if ($('showExact').checked && ex) line(ex, css('--exact'), [6, 6], 2);
+  px.strokeStyle = css('--res'); px.lineWidth = 2;
+  pts.forEach(p => { px.beginPath(); px.moveTo(X(p.x), Y(p.y)); px.lineTo(X(p.x), Y(w * p.x + b)); px.stroke(); });
+  line({ w, b }, css('--line'), [], 3);
+  px.fillStyle = css('--pt');
+  pts.forEach(p => { px.beginPath(); px.arc(X(p.x), Y(p.y), 6, 0, 7); px.fill(); });
+
+  $('eq').textContent = `y = ${fmt(w)}x ${b < 0 ? '−' : '+'} ${fmt(Math.abs(b))}`;
+  $('mse').textContent = pts.length ? fmt(mse(), 4) : '–';
+  $('ep').textContent = epoch;
+  drawLoss();
+}
+
+function drawLoss() {
+  const { W, H } = fit(lossC);
+  lx.clearRect(0, 0, W, H);
+  if (losses.length < 2) return;
+  const mx = Math.max(...losses), n = losses.length;
+  lx.strokeStyle = css('--line'); lx.lineWidth = 2; lx.beginPath();
+  losses.forEach((v, i) => {
+    const x = i / (n - 1) * W, y = H - 6 - (v / mx) * (H - 12);
+    i ? lx.lineTo(x, y) : lx.moveTo(x, y);
+  });
+  lx.stroke();
+}
+
+function loop() {
+  if (!running) return;
+  for (let i = 0; i < 4; i++) step();
+  draw();
+  const n = losses.length;
+  if (epoch > 3000 || (n > 8 && Math.abs(losses[n - 1] - losses[n - 8]) < 1e-10)) stop();
+  else requestAnimationFrame(loop);
+}
+function stop() { running = false; $('train').textContent = 'Treinar'; }
+function reset() { stop(); w = 0; b = 0.5; losses = []; epoch = 0; }
+
+plot.addEventListener('pointerdown', e => {
+  const r = plot.getBoundingClientRect();
+  pts.push({ x: (e.clientX - r.left) / r.width, y: 1 - (e.clientY - r.top) / r.height });
+  losses = []; epoch = 0; draw();
+});
+$('train').onclick = () => {
+  if (running) return stop();
+  if (pts.length < 2) { alert('Adicione pelo menos 2 pontos.'); return; }
+  running = true; $('train').textContent = 'Pausar'; loop();
+};
+$('clear').onclick = () => { pts = []; reset(); draw(); };
+$('rand').onclick = () => {
+  reset();
+  const k = Math.random() * 1.2 - 0.6, c = 0.5 - k / 2;
+  pts = Array.from({ length: 14 }, () => {
+    const x = 0.06 + Math.random() * 0.88;
+    return { x, y: Math.min(0.97, Math.max(0.03, k * x + c + (Math.random() - 0.5) * 0.25)) };
+  });
+  draw();
+};
+$('lr').oninput = () => { $('lrv').textContent = fmt(+$('lr').value); };
+$('showExact').onchange = draw;
+addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>
