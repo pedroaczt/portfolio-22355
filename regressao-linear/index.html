@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regressão linear interativa</title>
+<style>
+:root{--bg:#f2f6f8;--panel:#fff;--ink:#14213d;--muted:#5b6b7c;--line:#0f8b8d;--res:#d99a00;--exact:#7a8794;--grid:#dde5ea;--pt:#14213d}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1621;--panel:#16222f;--ink:#e8eef4;--muted:#93a4b5;--line:#3fc1c3;--res:#f0b429;--exact:#8e9cab;--grid:#243444;--pt:#e8eef4}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.6rem;line-height:1.2;margin:0 0 6px}
+p.lead{color:var(--muted);margin:0 0 16px;max-width:60ch}
+.panel{background:var(--panel);border-radius:10px;padding:12px;margin-bottom:12px}
+canvas{display:block;width:100%;border-radius:6px;touch-action:manipulation}
+#plot{height:min(70vw,400px);cursor:crosshair;background:var(--bg)}
+#loss{height:90px;background:var(--bg)}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0 0;font-variant-numeric:tabular-nums}
+.stats b{font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid var(--grid);background:var(--panel);color:var(--ink)}
+button.main{background:var(--line);border-color:var(--line);color:#fff;font-weight:600}
+button:focus-visible,input:focus-visible{outline:3px solid var(--res);outline-offset:2px}
+label{display:flex;align-items:center;gap:8px;color:var(--muted)}
+input[type=range]{flex:1;min-width:140px}
+h2{font-size:1rem;margin:0 0 8px}
+ol{margin:0;padding-left:20px;color:var(--muted)}
+.key{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:.9rem;margin-top:8px}
+.key i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+</style>
+</head>
+<body>
+<main>
+<h1>Regressão linear interativa
+
